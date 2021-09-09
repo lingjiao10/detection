@@ -30,21 +30,40 @@ import torchvision.models.detection.mask_rcnn
 from coco_utils import get_coco, get_coco_kp
 
 from group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
-from engine import train_one_epoch, evaluate
+from engine import train_one_epoch, evaluate, evaluate_voc
 
 import presets
 import utils
 
+from voc import get_voc
 
-def get_dataset(name, image_set, transform, data_path):
-    paths = {
-        "coco": (data_path, get_coco, 91),
-        "coco_kp": (data_path, get_coco_kp, 2)
-    }
-    p, ds_fn, num_classes = paths[name] # path, function to get dataset, number of classes
 
-    ds = ds_fn(p, image_set=image_set, transforms=transform)
-    return ds, num_classes
+# def get_dataset(name, image_set, transform, data_path):
+#     paths = {
+#         "coco": (data_path, get_coco, 91),
+#         "coco_kp": (data_path, get_coco_kp, 2)
+#     }
+#     p, ds_fn, num_classes = paths[name] # path, function to get dataset, number of classes
+
+#     ds = ds_fn(p, image_set=image_set, transforms=transform)
+#     return ds, num_classes
+
+def get_dataset(name, year, image_set, transforms, data_path):
+    return get_voc(data_path, year, image_set, transforms=transforms)
+    
+
+    # t = [ConvertVOC()]
+
+    # if transforms is not None:
+    #     t.append(transforms)
+    # transforms = T.Compose(t)
+
+    # ds = VOCDataset(data_path, year, image_set, transforms=transforms)
+
+
+    # num_classes = 20
+    # return ds, num_classes
+
 
 
 def get_transform(train, data_augmentation):
@@ -58,10 +77,11 @@ def get_args_parser(add_help=True):
     # parser.add_argument('--data-path', default='/datasets01/COCO/022719/', help='dataset')
     parser.add_argument('--data-path', default='H:/Datasets/COCO/022719/', help='dataset')
     parser.add_argument('--dataset', default='coco', help='dataset')
+    parser.add_argument('--year', default='2012', help='year of dataset')
     parser.add_argument('--model', default='maskrcnn_resnet50_fpn', help='model')
     parser.add_argument('--device', default='cuda', help='device')
     parser.add_argument('-b', '--batch-size', default=2, type=int,
-                        help='images per gpu, the total batch size is $NGPU x batch_size')
+                        help='i mages per gpu, the total batch size is $NGPU x batch_size')
     parser.add_argument('--epochs', default=26, type=int, metavar='N',
                         help='number of total epochs to run')
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -129,9 +149,9 @@ def main(args):
     # Data loading code
     print("Loading data")
 
-    dataset, num_classes = get_dataset(args.dataset, "train", get_transform(True, args.data_augmentation),
+    dataset, num_classes = get_dataset(args.dataset, args.year, "train", get_transform(True, args.data_augmentation),
                                        args.data_path)
-    dataset_test, _ = get_dataset(args.dataset, "val", get_transform(False, args.data_augmentation), args.data_path)
+    dataset_test, _ = get_dataset(args.dataset, args.year, "val", get_transform(False, args.data_augmentation), args.data_path)
 
     print("Creating data loaders")
     if args.distributed:
@@ -242,7 +262,7 @@ def main(args):
                 os.path.join(args.output_dir, 'checkpoint.pth'))
 
         # evaluate after every epoch
-        evaluate(model, data_loader_test, device=device)
+        evaluate_voc(model, data_loader_test, device=device)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
