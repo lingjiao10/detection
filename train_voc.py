@@ -50,19 +50,6 @@ from voc import get_voc
 
 def get_dataset(name, year, image_set, transforms, data_path):
     return get_voc(data_path, year, image_set, transforms=transforms)
-    
-
-    # t = [ConvertVOC()]
-
-    # if transforms is not None:
-    #     t.append(transforms)
-    # transforms = T.Compose(t)
-
-    # ds = VOCDataset(data_path, year, image_set, transforms=transforms)
-
-
-    # num_classes = 20
-    # return ds, num_classes
 
 
 
@@ -236,7 +223,7 @@ def main(args):
         args.start_epoch = checkpoint['epoch'] + 1
 
     if args.test_only:
-        evaluate(model, data_loader_test, device=device)
+        evaluate_voc(model, data_loader_test, device=device)
         return
 
     print("Start training")
@@ -244,8 +231,9 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
-        train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
+        metric_logger = train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
         lr_scheduler.step()
+        print(metric_logger.loss)
         if args.output_dir:
             checkpoint = {
                 'model': model_without_ddp.state_dict(),
