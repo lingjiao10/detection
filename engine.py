@@ -46,10 +46,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, vi
 
         epoch_loss +=loss_value
 
-        print(iter_plot)
         #draw loss value in visdom
         if iter_plot is not None:
-            print("hi")
             # if args.visdom:
             utils.update_vis_plot(viz, epoch*len(data_loader) + i, loss_value,
                             iter_plot, None, 'append')
