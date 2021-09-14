@@ -293,3 +293,35 @@ def init_distributed_mode(args):
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
+
+
+#show loss curve using visdom
+def create_vis_plot(viz, _xlabel, _ylabel, _title, _legend):
+    return viz.line(
+        X=torch.zeros((1,)).cpu(),
+        Y=torch.zeros((1,)).cpu(),
+        opts=dict(
+            xlabel=_xlabel,
+            ylabel=_ylabel,
+            title=_title,
+            legend=_legend
+        )
+    )
+
+
+def update_vis_plot(viz, iteration, loss, window1, window2, update_type,
+                    dataloader_size=1):
+    viz.line(
+        X=torch.ones(1).cpu() * iteration,
+        Y=torch.Tensor([loss]).unsqueeze(0).cpu() / dataloader_size,
+        win=window1,
+        update=update_type
+    )
+    # # initialize epoch plot on first iteration
+    # if iteration == 0:
+    #     viz.line(
+    #         X=torch.zeros(1).cpu(),
+    #         Y=torch.Tensor(loss).unsqueeze(0).cpu(),
+    #         win=window2,
+    #         update=True
+    #     )

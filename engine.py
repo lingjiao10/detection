@@ -10,7 +10,7 @@ from coco_eval import CocoEvaluator
 import utils
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
+def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, viz=None, iter_plot=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -23,6 +23,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
 
         lr_scheduler = utils.warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor)
 
+    i = 0
+    epoch_loss = 0
     for images, targets in metric_logger.log_every(data_loader, print_freq, header):
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -42,6 +44,17 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
             print(loss_dict_reduced)
             sys.exit(1)
 
+        epoch_loss +=loss_value
+
+        print(iter_plot)
+        #draw loss value in visdom
+        if iter_plot is not None:
+            print("hi")
+            # if args.visdom:
+            utils.update_vis_plot(viz, epoch*len(data_loader) + i, loss_value,
+                            iter_plot, None, 'append')
+            # wind.line([loss_value],[epoch*len(data_loader) + i],win = 'train_loss',update = 'append')
+
         optimizer.zero_grad()
         losses.backward()
         optimizer.step()
@@ -52,9 +65,11 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
-        print("----------------")
-        print(metric_logger.loss)
+        # print("----------------")
+        # print(metric_logger.loss)
+        i = i+1
 
+    metric_logger.update(loss=epoch_loss)
     return metric_logger
 
 

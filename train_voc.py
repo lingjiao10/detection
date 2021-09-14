@@ -20,6 +20,7 @@ the number of epochs should be adapted so that we have the same number of iterat
 import datetime
 import os
 import time
+from visdom import Visdom
 
 import torch
 import torch.utils.data
@@ -37,6 +38,8 @@ import utils
 
 from voc import get_voc
 
+def str2bool(v):
+    return v.lower() in ("yes", "true", "t", "1")
 
 # def get_dataset(name, image_set, transform, data_path):
 #     paths = {
@@ -121,12 +124,20 @@ def get_args_parser(add_help=True):
                         help='number of distributed processes')
     parser.add_argument('--dist-url', default='env://', help='url used to set up distributed training')
 
+    parser.add_argument('--visdom', default=False, type=str2bool,
+                    help='Use visdom for loss visualization')
+
     return parser
 
 
 def main(args):
     if args.output_dir:
         utils.mkdir(args.output_dir)
+
+
+    if args.visdom:
+        import visdom
+        viz = visdom.Visdom()
 
     utils.init_distributed_mode(args)
     print(args)
@@ -228,12 +239,39 @@ def main(args):
 
     print("Start training")
     start_time = time.time()
+
+    #show loss curve
+    if args.visdom:
+        vis_title = args.model + ' Training on ' + args.dataset
+        vis_legend = ['Total Loss']
+        iter_plot = utils.create_vis_plot(viz, 'Iteration', 'Loss', vis_title, vis_legend)
+        epoch_plot = utils.create_vis_plot(viz, 'Epoch', 'Loss', vis_title, vis_legend)
+
+    # wind = Visdom()
+    # # 初始化窗口信息
+    # wind.line([0.], # Y的第一个点的坐标
+    #           [0.], # X的第一个点的坐标
+    #           win = 'train_loss', # 窗口的名称
+    #           opts = dict(title = 'train_loss') # 图像的标例
+    # )
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
-        metric_logger = train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
+
+        if args.visdom:
+            metric_logger = train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq, viz, iter_plot)
+        else:
+            metric_logger = train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
+
         lr_scheduler.step()
-        print(metric_logger.loss)
+        print("----------------")
+        print(metric_logger.loss.item())
+        
+        if args.visdom:
+            utils.update_vis_plot(viz, epoch, metric_logger.loss.item(), epoch_plot, None,
+                            'append', len(data_loader))
+
         if args.output_dir:
             checkpoint = {
                 'model': model_without_ddp.state_dict(),
@@ -255,6 +293,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
+
 
 
 if __name__ == "__main__":
