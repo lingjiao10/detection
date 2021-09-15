@@ -247,14 +247,6 @@ def main(args):
         iter_plot = utils.create_vis_plot(viz, 'Iteration', 'Loss', vis_title, vis_legend)
         epoch_plot = utils.create_vis_plot(viz, 'Epoch', 'Loss', vis_title, vis_legend)
 
-    # wind = Visdom()
-    # # 初始化窗口信息
-    # wind.line([0.], # Y的第一个点的坐标
-    #           [0.], # X的第一个点的坐标
-    #           win = 'train_loss', # 窗口的名称
-    #           opts = dict(title = 'train_loss') # 图像的标例
-    # )
-
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -265,12 +257,10 @@ def main(args):
             metric_logger = train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
 
         lr_scheduler.step()
-        print("----------------")
-        print(metric_logger.loss.item())
         
         if args.visdom:
-            utils.update_vis_plot(viz, epoch, metric_logger.loss.item(), epoch_plot, None,
-                            'append', len(data_loader))
+            utils.update_vis_plot(viz, epoch, metric_logger.loss.avg, epoch_plot, None,
+                            'append')
 
         if args.output_dir:
             checkpoint = {

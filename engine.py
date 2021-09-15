@@ -24,7 +24,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, vi
         lr_scheduler = utils.warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor)
 
     i = 0
-    epoch_loss = 0
+    # epoch_loss = 0
     for images, targets in metric_logger.log_every(data_loader, print_freq, header):
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -44,7 +44,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, vi
             print(loss_dict_reduced)
             sys.exit(1)
 
-        epoch_loss +=loss_value
+        # epoch_loss +=loss_value
+        # print("epoch_loss:", epoch_loss)
 
         #draw loss value in visdom
         if iter_plot is not None:
@@ -63,11 +64,15 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, vi
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
+        # print("metric_logger.loss.avg: ", metric_logger.loss.avg)
+
         # print("----------------")
         # print(metric_logger.loss)
         i = i+1
 
-    metric_logger.update(loss=epoch_loss)
+    # metric_logger.update(loss=epoch_loss)
+    print(metric_logger)
+    print(metric_logger.loss)
     return metric_logger
 
 
